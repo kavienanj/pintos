@@ -22,6 +22,8 @@ RUN apt-get update && \
     cscope \
     vim \
     ca-certificates \
+    libx11-dev \
+    libxrandr-dev \
     wget && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -31,6 +33,12 @@ ENV DEBIAN_FRONTEND=
 
 # Copy the Pintos src directory to the image
 COPY pintos/src /pintos/src
+
+# Make toolchain directory
+RUN mkdir -p /pintos/toolchain
+
+# build Bochs from source
+RUN pintos/src/misc/bochs-2.6.2-build.sh /pintos/toolchain/x86_64
 
 # Build the toolchain with a custom prefix
 RUN /pintos/src/misc/toolchain-build.sh --prefix /pintos/toolchain/x86_64 /pintos/toolchain && \
