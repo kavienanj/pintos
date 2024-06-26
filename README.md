@@ -15,7 +15,7 @@ To use this Docker setup for Pintos, follow these steps:
    First, clone this repository to your local machine using:
 
    ```bash
-   git clone https://github.com/kavienanj/pintos
+   git clone https://github.com/kavienanj/pintos.git
    ```
 
 2. **Build the Docker Image**
