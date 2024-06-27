@@ -18,6 +18,7 @@ RUN apt-get update && \
     libvirt-bin \
     perl \
     cgdb \
+    dos2unix \
     ctags \
     cscope \
     vim \
@@ -33,6 +34,14 @@ ENV DEBIAN_FRONTEND=
 
 # Copy the Pintos src directory to the image
 COPY pintos/src /pintos/src
+
+# Ensure that the script file has executable permissions
+RUN chmod +x /pintos/src/misc/bochs-2.6.2-build.sh
+RUN chmod +x /pintos/src/misc/toolchain-build.sh
+
+# Ensure there are no hidden char. or incorrect line ending
+RUN dos2unix /pintos/src/misc/bochs-2.6.2-build.sh
+RUN dos2unix /pintos/src/misc/toolchain-build.sh
 
 # Make toolchain directory
 RUN mkdir -p /pintos/toolchain
