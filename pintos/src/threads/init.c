@@ -70,7 +70,13 @@ static void locate_block_devices (void);
 static void locate_block_device (enum block_type, const char *name);
 #endif
 
+#define MAX_INPUT_LENGTH 100
+
 int pintos_init (void) NO_RETURN;
+
+void read_prompt_input(char *buffer, int length);
+
+int prompt_user(void);
 
 /* Pintos main entry point. */
 int
@@ -133,7 +139,11 @@ pintos_init (void)
     /* Run actions specified on kernel command line. */
     run_actions (argv);
   } else {
-    // TODO: no command line passed to kernel. Run interactively 
+    // No command line passed to kernel. Run interactively 
+    while (true) {
+      int status = prompt_user();  // Read input, process the command and return status
+      if (status == 1) break; // Exit the loop if status is 1
+    } 
   }
 
   /* Finish up. */
@@ -141,6 +151,67 @@ pintos_init (void)
   thread_exit ();
 }
 
+
+// Function to read prompt input using input_getc
+void read_prompt_input(char *buffer, int length) {
+  int i = 0;  // Index to keep track of buffer position
+  char c;
+  while (i < length - 1) {
+    c = input_getc(); // Get character from the input buffer
+    if (c == '\b' || c == 127) {
+      // Handle backspace
+      if (i > 0) {
+        i--;
+        printf("\b \b"); // Move cursor back, print space, and move cursor back again
+      }
+    } else if (c == '\r' || c == '\n') {
+      // Handle newline or carriage return
+      break;
+    } else {
+      // Handle regular character input
+      buffer[i++] = c;
+      printf("%c", c); // Echo character to the console
+    }
+  }
+  buffer[i] = '\0';  // Null-terminate the string
+}
+
+// Function to get user input, process the command and return status
+int prompt_user(void) {
+  printf("CS2042> "); // Print the prompt
+
+  char input[MAX_INPUT_LENGTH];  // Buffer to store user input
+
+  read_prompt_input(input, MAX_INPUT_LENGTH); // Read input from the user
+
+  // Process the command
+  if (strcmp(input, "whoami") == 0) {
+    printf("\nJegatheesan Kavienan - 220314M");
+  } else if (strcmp(input, "shutdown") == 0) {
+    shutdown_power_off();  // Call function to shut down the system
+  } else if (strcmp(input, "time") == 0) {
+    time_t time = rtc_get_time();  // Get number of seconds passed since Unix epoch
+    printf("\nTime since Unix epoch: %ld seconds", time);  // Print the time
+  } else if (strcmp(input, "ram") == 0) {
+    uint32_t ram_kb = init_ram_pages * PGSIZE / 1024;  // Calculate RAM size in KB
+    printf("\nAvailable RAM - %u KB", ram_kb);  // Print RAM size
+  } else if (strcmp(input, "thread") == 0) {
+    printf("\n");
+    thread_print_stats();  // Print thread statistics
+  } else if (strcmp(input, "priority") == 0) {
+    int priority = thread_get_priority();  // Get current thread priority
+    printf("\nCurrent thread priority - %d", priority);  // Print priority
+  } else if (strcmp(input, "exit") == 0) {
+    printf("\n");
+    return 1;  // Exit the function (assuming this is within a loop)
+  } else {
+    printf("\nPINTOS: Command not found - %s", input);  // Print error message
+  }
+
+  printf("\n");  // Move to a new line after executing the command
+  return 0;  // Return 0 to continue the loop
+}
+
 /* Clear the "BSS", a segment that should be initialized to
    zeros.  It isn't actually stored on disk or zeroed by the
    kernel loader, so we have to zero it ourselves.
