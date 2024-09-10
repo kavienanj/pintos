@@ -189,3 +189,4 @@ putchar_have_lock (uint8_t c)
   serial_putc (c);
   vga_putc (c);
 }
+

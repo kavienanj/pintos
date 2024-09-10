@@ -38,6 +38,9 @@
 #include "filesys/fsutil.h"
 #endif
 
+
+#include "devices/input.h"
+
 /* Page directory with kernel mappings only. */
 uint32_t *init_page_dir;
 
@@ -72,6 +75,24 @@ static void locate_block_device (enum block_type, const char *name);
 
 int pintos_init (void) NO_RETURN;
 
+/* Function to wait for the Enter key press */
+void wait_for_enter(void) {
+  printf("Enter function.\n");
+    char *init_string = "I";
+    uint8_t key;
+    do {
+        key = input_getc();  // Get one key from the input buffer
+        
+        printf("%c", key);
+        printf("%c", key);
+
+    } while (key != '\r' && key != '\n');  // Continue until Enter is pressed
+
+    input_putbuf();
+    // Optionally, perform actions after Enter is pressed
+    printf("Exit function.\n");
+}
+
 /* Pintos main entry point. */
 int
 pintos_init (void)
@@ -93,7 +114,7 @@ pintos_init (void)
   /* Greet user. */
   printf ("Pintos booting with %'"PRIu32" kB RAM...\n",
           init_ram_pages * PGSIZE / 1024);
-
+  printf("Ilam is very gay \n");
   /* Initialize memory system. */
   palloc_init (user_page_limit);
   malloc_init ();
@@ -133,7 +154,15 @@ pintos_init (void)
     /* Run actions specified on kernel command line. */
     run_actions (argv);
   } else {
-    // TODO: no command line passed to kernel. Run interactively 
+    // printf("HI\n");
+    puts("Yo>>");
+    console_init();
+
+
+
+    input_init();
+    wait_for_enter();
+    // TODO: no command line passed to kernel. Run interactively  
   }
 
   /* Finish up. */

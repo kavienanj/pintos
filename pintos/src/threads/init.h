@@ -8,5 +8,6 @@
 
 /* Page directory with kernel mappings only. */
 extern uint32_t *init_page_dir;
+void wait_for_enter(void);
 
 #endif /* threads/init.h */
