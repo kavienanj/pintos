@@ -63,7 +63,7 @@ To ensure that your changes to Pintos projects are saved on your host machine, y
 Run the following command to start the Docker container with the source directory mounted:
 
 ```bash
-docker run -it --rm --mount type=bind,source=/path/to/your/pintos/src,target=/pintos/src pintos
+docker run -it --rm --mount type=bind,source=/Users/ovindu/Desktop/Repos/pintos/pintos/src,target=/pintos/src pintos
 ```
 
 Replace `/path/to/your/pintos/src` with the actual path to the `src` directory in your Pintos project on your host machine. Now, any changes you make inside the `/pintos/src` directory will be reflected in the `src` directory on your host machine, allowing you to seamlessly work across both environments.
