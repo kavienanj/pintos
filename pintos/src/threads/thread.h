@@ -98,6 +98,8 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
+    int priorities[9];                  /* Donated Priority List */  
+    int size;                           /* Size of donated priority list */
     struct list_elem allelem;           /* List element for all threads list. */
     struct list openfiles;              /* List of files currently opened by this thread. */
     struct list children;               /* List of child processes */
@@ -110,8 +112,16 @@ struct thread
     int exit_status;                    /* Store own exit status */
     int load_success;                   /* Tells the parent if executable has been loaded */
 
+    int64_t wakeup_ticks;               /* tick till wake up */
+    int donation_no;                    /* Store the number of donation locks */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+
+    /* For priority donation. */
+   //  int base_priority;                  /* Base priority. */
+    struct lock *waiting_lock;          /* Lock the thread is waiting for. */
+   //  struct list donations;              /* List of threads donating priority. */
+   //  struct list_elem donation_elem;     /* List element for donation list. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -135,9 +145,24 @@ void thread_print_stats (void);
 
 typedef void thread_func (void *aux);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
+/* Check if the current thread has the highest priority. If not, yield. */
+void thread_check_yield(void);
+/* Comparison function for ordering threads by priority. */
+bool thread_cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+// /* Comparison function for ordering threads by donation priority. */
+// bool thread_cmp_donation_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+// /* Donation priority to the current thread. */
+// void thread_donate_priority(void);
+// /* Remove donation priority from the current thread. */
+// void thread_remove_donation(struct lock *lock);
+// /* Check thread's priority after releasing a lock. */
+// void thread_check_priority(void);
 
 void thread_block (void);
 void thread_unblock (struct thread *);
+
+void thread_sleep (int64_t wakeup_ticks);
+void thread_wakeup (int64_t current_ticks);
 
 struct thread *thread_current (void);
 tid_t thread_tid (void);
@@ -159,5 +184,7 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+void sort_ready_list(void);
+void search_array(struct thread *cur,int elem);
 
 #endif /* threads/thread.h */
