@@ -185,7 +185,7 @@ int get_input(void) {
 
     // Compare input_buffer content and perform corresponding actions
     if (strcmp(input_buffer, "whoami") == 0) {
-        printf("\nMy name is Sajeev Kugarajah - 210554M");
+        printf("\nMy name is Jegatheesan Kavienan - 220314M");
     } else if (strcmp(input_buffer, "shutdown") == 0) {
         shutdown_power_off();  // Call function to shut down the system
     } else if (strcmp(input_buffer, "time") == 0) {
