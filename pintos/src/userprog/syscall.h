@@ -1,9 +1,18 @@
 #ifndef USERPROG_SYSCALL_H
 #define USERPROG_SYSCALL_H
 
-typedef int pid_t;
+#include "threads/synch.h"
+#include "filesys/file.h"
 
-struct lock filesys_lock;
+struct lock file_system_lock;       // lock for accessing file system
+
+struct file_descriptor
+{
+    struct file *_file;             // pointer to file
+    int fd;                         // fid
+    struct list_elem fd_elem;       // list elem to add to threads open fds list
+};
+
 
 void syscall_init (void);
 

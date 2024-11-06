@@ -3,9 +3,8 @@
 
 #include <debug.h>
 #include <list.h>
-#include <stdint.h>
-#include "filesys/file.h"
 #include "threads/synch.h"
+#include <stdint.h>
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -25,14 +24,6 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
-
-
-/* Struct for maintaining the files a thread has opened */
-struct openfile {
-  struct list_elem elem;
-  int fd;
-  struct file *file;
-};
 
 /* A kernel thread or user process.
 
@@ -98,30 +89,26 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
-    int priorities[9];                  /* Donated Priority List */  
-    int size;                           /* Size of donated priority list */
     struct list_elem allelem;           /* List element for all threads list. */
-    struct list openfiles;              /* List of files currently opened by this thread. */
-    struct list children;               /* List of child processes */
-    struct list_elem childelem;         /* List element for parent's children list */
-    int next_fd;                        /* The next file descriptor to use when opening a file. */
-    char *cmd;                          /* The command given for this thread to run */
-    struct semaphore load_sema;         /* Synch for exec */
-    struct semaphore wait_sema;         /* Synch for process_wait */
-    struct semaphore exit_sema;         /* Synch for exit */
-    int exit_status;                    /* Store own exit status */
-    int load_success;                   /* Tells the parent if executable has been loaded */
 
-    int64_t wakeup_ticks;               /* tick till wake up */
-    int donation_no;                    /* Store the number of donation locks */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    struct list_elem blockedelem; /* List element for blocked threads list */
+    int64_t sleep_ticks; /*Time to wake if sleeping*/
 
-    /* For priority donation. */
-   //  int base_priority;                  /* Base priority. */
-    struct lock *waiting_lock;          /* Lock the thread is waiting for. */
-   //  struct list donations;              /* List of threads donating priority. */
-   //  struct list_elem donation_elem;     /* List element for donation list. */
+    struct list child_list;            // maintain list of children
+    struct list_elem child;       // list element for child list of parent
+    struct thread *parent_t;           // pointer to parent thread
+    struct semaphore init_sema;        // semaphore for parent to wait for child to init
+    struct semaphore pre_exit_sema;    // semaphore for parent to wait for child to start exiting and set exit status
+    struct semaphore exit_sema;        // semaphore for child to wait for parent to get exit status
+    bool load_success_status;          // indicate whether process loaded successfully
+    int exit_status;                   // exit status for parents who wait to see
+
+    int next_fd;                       // next file descriptor
+    struct list open_fd_list;          // list of open file descriptors held by process
+    struct file *process_file;         // The file which contains the code for the process
+
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -145,24 +132,11 @@ void thread_print_stats (void);
 
 typedef void thread_func (void *aux);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
-/* Check if the current thread has the highest priority. If not, yield. */
-void thread_check_yield(void);
-/* Comparison function for ordering threads by priority. */
-bool thread_cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-// /* Comparison function for ordering threads by donation priority. */
-// bool thread_cmp_donation_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-// /* Donation priority to the current thread. */
-// void thread_donate_priority(void);
-// /* Remove donation priority from the current thread. */
-// void thread_remove_donation(struct lock *lock);
-// /* Check thread's priority after releasing a lock. */
-// void thread_check_priority(void);
 
 void thread_block (void);
 void thread_unblock (struct thread *);
-
-void thread_sleep (int64_t wakeup_ticks);
-void thread_wakeup (int64_t current_ticks);
+void threadSleep (int64_t);
+void threadWake(int64_t);
 
 struct thread *thread_current (void);
 tid_t thread_tid (void);
@@ -175,8 +149,6 @@ void thread_yield (void);
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
 
-struct thread *get_thread_by_tid (tid_t);
-
 int thread_get_priority (void);
 void thread_set_priority (int);
 
@@ -184,7 +156,5 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
-void sort_ready_list(void);
-void search_array(struct thread *cur,int elem);
 
 #endif /* threads/thread.h */
