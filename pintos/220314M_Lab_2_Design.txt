@@ -1,0 +1,267 @@
+			+--------------------------+
+			|       CS 2043            |
+			| PROJECT 2: USER PROGRAMS |
+			|      DESIGN DOCUMENT     |
+			+--------------------------+
+
+---- PRELIMINARIES ----
+>> By: Jegatheesan Kavienan (220314M)
+
+>> If you have any preliminary comments on your submission, notes for the
+>> TAs, or extra credit, please give them here.
+
+>> Please cite any offline or online sources you consulted while
+>> preparing your submission, other than the Pintos documentation, course
+>> text, lecture notes, and course staff.
+>> https://github.com/st2092/pintos-user-programs/tree/master
+
+			        ARGUMENT PASSING
+              ================
+
+---- DATA STRUCTURES ----
+
+>> A1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration. Identify the purpose of each in 25 words or less.
+
+No new variables or changes to struct were declared for argument passing. We did change
+the function declaration of static bool setup_stack and bool load to:
+
+static bool setup_stack (void **esp, char **saveptr, const char *filename) 
+
+bool load (const char *file_name, void (**eip) (void), void **esp, char **saveptr)
+
+The functions were redefined because in start_process, strtok_r placed a NULL pointer at the
+first space in the command line. This separates the file name from the arguments. The save
+pointer (saveptr) is a pointer to the start of the arguments, which is used in setup_stack.
+
+---- ALGORITHMS ----
+
+>> A2: Briefly describe how you implemented argument parsing. How do
+>> you arrange for the elements of argv[] to be in the right order?
+>> How do you avoid overflowing the stack page?
+
+Argument parsing is implemented in the setup_stack function. The algorithm to handle parsing of
+the arguments is as follows:
+  1) Create two local variables, char **cont and char **argv, with a default size of 2.
+
+  2) Parse the command line with strtok_r starting at the save pointer. A pointer is kept to each
+  argument in char **cont throughout the parsing process. Since the number of arguments is
+  undefined, we will double the size of both cont and argv if we run out of space.
+
+  3) Once the entire command line is parsed, we will copy cont to argv in reverse order (end to
+  start). This is because we have to push onto the stack in reverse order. While copying over to
+  argv, we push each character string onto the stack as well.
+
+  4) By the end of the copying process, argv will contain all arguments in reverse order. Then 
+  we align the stack pointer to a multiple of 4 bytes.
+
+  5) Push the array of pointers from argv onto the stack.
+
+  6) Push argv, argc, and a fake return address onto the stack.
+
+  7) Free argv and cont.
+
+---- RATIONALE ----
+
+>> A3: Why does Pintos implement strtok_r() but not strtok()?
+
+Pintos implements strtok_r() because strtok() internally stores the location of the last
+token found, to be used on subsequent calls. This is prone to race conditions. For example,
+if two threads call strtok(), one thread may use the last token stored by another thread.
+This can lead to incorrect results and potentially crash the kernel.
+
+>> A4: In Pintos, the kernel separates commands into an executable name
+>> and arguments. In Unix-like systems, the shell does this
+>> separation. Identify at least two advantages of the Unix approach.
+
+With the Unix approach, the kernel is freed from parsing commands, leaving it to the shell.
+This allows the shell to handle parsing and error checking before passing the command to
+the kernel.
+
+                 SYSTEM CALLS
+                 ============
+
+---- DATA STRUCTURES ----
+
+>> B1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration. Identify the purpose of each in 25 words or less.
+
+Added the following to struct thread:
+
+    struct list file_list; 
+    -  The file_list is used to keep track of files.
+    
+    int fd; 
+    -  The fd is the current file descriptor.
+      
+    struct list child_list;
+    -  The child_list is a list of the child processes of the thread.
+    
+    tid_t parent;
+    -  The thread id of the parent of this thread.
+      
+    struct child_process* cp;
+    -  This is a pointer to the current running child process.
+      
+    struct file* executable; 
+    -  Used for denying writes to executables.
+    
+    struct list lock_list;
+    -  Used to keep track of locks held by the thread.
+      
+Added the following struct in syscall.h:
+
+struct child_process {
+  int pid;
+  int load_status;
+  int wait;
+  int exit;
+  int status;
+  struct semaphore load_sema;
+  struct semaphore exit_sema;
+  struct list_elem elem;
+};
+
+  The struct child_process represents a child process and holds important
+  information such as the pid, load status, and semaphores.
+
+struct process_file {
+    struct file *file;
+    int fd;
+    struct list_elem elem;
+};
+  The process_file holds the file being worked with. It contains
+  the file descriptor and the file content.
+
+struct lock file_system_lock;
+  Used for locking critical sections involving file modifications.
+  
+>> B2: Describe how file descriptors are associated with open files.
+>> Are file descriptors unique within the entire OS or just within a
+>> single process?
+
+  File descriptors are unique to each open file for every process. Each
+  process has its own file descriptor counter, which increments each time
+  a file is opened. Thus, the file descriptor is unique within each
+  separate process.
+  
+---- ALGORITHMS ----
+
+>> B3: Describe your code for reading and writing user data from the
+>> kernel.
+
+    For both write and read, we first check if the stack pointer is valid. 
+  If valid, we can dereference the pointer to determine which system call
+  to execute. Next, we retrieve the three arguments used for the system
+  call “write” or “read” based on the dereferenced pointer. Then, we
+  verify if the buffer is valid before proceeding with the system call.
+  
+>> B4: Suppose a system call causes a full page (4,096 bytes) of data
+>> to be copied from user space into the kernel. What is the least
+>> and the greatest possible number of inspections of the page table
+>> (e.g., calls to pagedir_get_page()) that might result? What about
+>> for a system call that only copies 2 bytes of data? Is there room
+>> for improvement in these numbers, and how much?
+
+>> B5: Briefly describe your implementation of the "wait" system call
+>> and how it interacts with process termination.
+
+  The system call "wait" calls process_wait, which uses a while loop
+  to wait for child processes to terminate, using the child process's
+  exit member variable as a sentinel.
+
+>> B6: Any access to user program memory at a user-specified address
+>> can fail due to a bad pointer value. Such accesses must cause the
+>> process to be terminated. System calls are fraught with such
+>> accesses, e.g., a "write" system call requires reading the system
+>> call number from the user stack, then each of the call's three
+>> arguments, then an arbitrary amount of user memory, and any of
+>> these can fail at any point. This poses a design and
+>> error-handling problem: how do you best avoid obscuring the primary
+>> function of code in a morass of error-handling? Furthermore, when
+>> an error is detected, how do you ensure that all temporarily
+>> allocated resources (locks, buffers, etc.) are freed? In a few
+>> paragraphs, describe the strategy or strategies you adopted for
+>> managing these issues. Give an example.
+
+  We used function decomposition to handle errors. This approach
+  simplifies the design and avoids implementing page fault memory
+  handling. An invalid pointer triggers the page fault interrupt
+  handler, which subsequently calls syscall exit(-1). This ensures
+  that all resources are freed when an error is detected.
+
+
+---- SYNCHRONIZATION ----
+
+>> B7: The "exec" system call returns -1 if loading the new executable
+>> fails, so it cannot return before the new executable has completed
+>> loading. How does your code ensure this? How is the load
+>> success/failure status passed back to the thread that calls "exec"?
+
+  The load status (loaded or not loaded) is tracked in a child_process
+  struct. After finding the pid, we check if it is loaded. If not,
+  the function exits with an error (-1).
+
+>> B8: Consider parent process P with child process C. How do you
+>> ensure proper synchronization and avoid race conditions when P
+>> calls wait(C) before C exits? After C exits? How do you ensure
+>> that all resources are freed in each case? How about when P
+>> terminates without waiting, before C exits? After C exits? Are
+>> there any special cases?
+
+  When P waits for C, P stops and waits for C to exit. When C exits,
+  its locks are released. If P calls wait after C exits, P will have
+  no child to wait for and will not wait.
+  If P terminates before C exits, P kills all of its children,
+  including C. All child processes are terminated and release their locks.
+  If P terminates after C exits, C’s locks are already released.
+  
+---- RATIONALE ----
+
+>> B9: Why did you choose to implement access to user memory from the
+>> kernel in the way that you did?
+
+  For user memory access, we opted for function decomposition to handle
+  errors. This approach simplifies the design and avoids implementing
+  page fault memory handling.
+  
+  An invalid pointer triggers the page fault interrupt handler, which
+  subsequently calls syscall exit(-1).
+
+>> B10: What advantages or disadvantages can you see to your design
+>> for file descriptors?
+
+  File descriptors are unique for each process, reducing the risk of race
+  conditions.
+
+>> B11: The default tid_t to pid_t mapping is the identity mapping.
+>> If you changed it, what advantages are there to your approach?
+  
+  We used the default tid_t to pid_t mapping.
+
+			   SURVEY QUESTIONS
+			   ================
+
+Answering these questions is optional, but it will help us improve the
+course in future quarters.  Feel free to tell us anything you
+want--these questions are just to spur your thoughts.  You may also
+choose to respond anonymously in the course evaluations at the end of
+the quarter.
+
+>> In your opinion, was this assignment, or any one of the three problems
+>> in it, too easy or too hard?  Did it take too long or too little time?
+
+>> Did you find that working on a particular part of the assignment gave
+>> you greater insight into some aspect of OS design?
+
+>> Is there some particular fact or hint we should give students in
+>> future quarters to help them solve the problems?  Conversely, did you
+>> find any of our guidance to be misleading?
+
+>> Do you have any suggestions for the TAs to more effectively assist
+>> students, either for future quarters or the remaining projects?
+
+>> Any other comments?
+
