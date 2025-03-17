@@ -76,6 +76,10 @@ cd build
 pintos --
 ```
 
+## Getting Help
+
+If you encounter any issues while setting up or using Pintos with Docker, please feel free to open an issue in this repository. I will do my best to help you resolve the problem. Or reach out to me via email at [kavienanj@gmail.com](mailto:kavienanj@gmail.com).
+
 ## Customization
 
 If you need to customize the Docker environment, you can modify the Dockerfile and rebuild the image using the steps provided above. This allows you to add additional packages or change the configuration to suit your needs.
